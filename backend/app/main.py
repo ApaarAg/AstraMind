@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.schemas import StudyRequest
-
+from app.model_loader import predict_with_classification
 
 app=FastAPI(title="Ai Study Planner ")
 
@@ -16,4 +16,13 @@ def create_plan(request:StudyRequest):
         "num_topics":len(request.topics),
         "available_hours":request.available_hours
     }
+
+@app.post("/predict")
+def predict_mastery_endpoint(request:StudyRequest):
+
+    topic_dicts=[t.dict() for t in request.topics]
+
+    predictions = predict_with_classification(topic_dicts)
+
+    return {"predictions":predictions}
 
