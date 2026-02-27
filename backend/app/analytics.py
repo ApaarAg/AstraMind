@@ -19,7 +19,9 @@ def compute_metrics():
         "avg_predicted_gain":df["predicted_gain"].mean(),
         "avg_delta_minutes":df["delta_minutes"].mean(),
         "allocation_variance":df["predicted_gain"].var(),
-        "final_allocation_variance":df["final_minutes"].var()
+        "final_allocation_variance":df["final_minutes"].var(),
+        "avg_normalized_gain": df["normalized_gain"].mean(),
+        "gain_variance": df["normalized_gain"].var()
     }
 
     return metrics
