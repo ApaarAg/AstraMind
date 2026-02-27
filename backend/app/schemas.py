@@ -14,11 +14,13 @@ class StudyRequest(BaseModel):
     topics:List[Topic]
     available_hours:float
     tie_breaker:str ="difficulty"
-
-class FinalPlanItem(BaseModel):
+  
+class FinalTopicUpdate(BaseModel):
     topic_name:str
+    pre_score:float
+    post_score:float
     allocated_minutes:int
 
 class FinalizeRequest(BaseModel):
-    final_plan:List[FinalPlanItem]
-    
+    final_plan:List[FinalTopicUpdate]
+
