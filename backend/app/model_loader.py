@@ -19,6 +19,15 @@ def predict_mastery(topics:list):
     model=load_model()
 
     df=pd.DataFrame(topics)
+    feature_columns=[
+        "difficulty",
+        "past_score",
+        "hours_spent",
+        "revision_count",
+        "days_to_exam",
+        "confidence"
+    ]
+    df=df[feature_columns].astype(float)
     preds=model.predict(df)
 
     return preds
@@ -37,11 +46,10 @@ def predict_with_classification(topics:list):
     results=[]
 
     for topic,prob in zip(topics,probs):
-        results.append({
-            "topic_name":topic["topic_name"],
-            "mastery_probability":float(prob),
-            "mastery_level":classify_mastery(prob)
-        })
+        result = topic.copy()
+
+        result["predicted_gain"]=float(prob)
+        results.append(result)
 
     return results
 
