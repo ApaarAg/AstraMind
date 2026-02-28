@@ -2,6 +2,7 @@ import csv
 import os
 import datetime
 import pandas as pd
+from training.retrain import retrain_model
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -89,5 +90,6 @@ def log_session(predicted_plan, final_plan):
     # Retraining trigger
     if os.path.isfile(LOG_PATH):
         df = pd.read_csv(LOG_PATH)
-        if len(df) >= 300:
+        if len(df) >=50:
             print("⚠ Retraining threshold reached (300 logs)")
+            retrain_model()
