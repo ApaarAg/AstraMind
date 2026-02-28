@@ -1,25 +1,38 @@
-import csv,os,datetime
+import csv
+import os
+import datetime
 import pandas as pd
 
-BASE_DIR= os.path.dirname(os.path.dirname(__file__))
-DATA_DIR=os.path.join(BASE_DIR,"data")
-os.makedirs(DATA_DIR,exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-LOG_PATH=os.path.join(DATA_DIR,r"session_logs.csv")
+LOG_PATH = os.path.join(DATA_DIR, "session_logs.csv")
 
-def log_session(predicted_plan,final_plan):
-    
-    file_exits=os.path.isfile(LOG_PATH)
 
-    final_lookup={
-        item.topic_name:item.allocated_minutes
+def compute_normalized_gain(pre_score, post_score):
+    if pre_score >= 100:
+        return 0.0
+    return (post_score - pre_score) / (100 - pre_score)
+
+
+def log_session(predicted_plan, final_plan):
+
+    file_exists = os.path.isfile(LOG_PATH)
+
+    # Map topic_name -> full final object
+    final_lookup = {
+        item.topic_name: item
         for item in final_plan
     }
 
-    with open(LOG_PATH,mode="a",newline="") as file:
-        writer=csv.writer(file)
+    timestamp = datetime.datetime.now()
 
-        if not file_exits:
+    with open(LOG_PATH, mode="a", newline="") as file:
+        writer = csv.writer(file)
+
+        # Write header only once
+        if not file_exists:
             writer.writerow([
                 "timestamp",
                 "topic_name",
@@ -32,42 +45,49 @@ def log_session(predicted_plan,final_plan):
                 "predicted_gain",
                 "predicted_minutes",
                 "final_minutes",
-                "delta_minutes"
+                "delta_minutes",
+                "pre_score",
+                "post_score",
+                "normalized_gain"
             ])
 
-            timestamp=datetime.datetime.now()
+        # Always write rows
+        for topic in predicted_plan:
 
-            for topic in predicted_plan:
+            final_item = final_lookup.get(topic["topic_name"])
 
-                predicted_minutes=topic["allocated_minutes"]
-                final_minutes=final_lookup.get(topic["topic_name"],predicted_minutes)
-                delta=final_minutes-predicted_minutes
+            if final_item is None:
+                continue
 
-                writer.writerow([
-                    timestamp,
-                    topic["topic_name"],
-                    topic["difficulty"],
-                    topic["past_score"],
-                    topic["hours_spent"],
-                    topic["revision_count"],
-                    topic["days_to_exam"],
-                    topic["confidence"],
-                    topic["predicted_gain"],
-                    predicted_minutes,
-                    final_minutes,
-                    delta
-                ])
-                normalized_gain=compute_normalized_gain(
-                    topic["pre_score"],
-                    topic["post_score"]
-                )
-            if os.path.isfile(LOG_PATH):
-                df=pd.read_csv(LOG_PATH)
-                if len(df)>=300:
-                    print("Retraining threshold reached (300 logs)")
+            predicted_minutes = topic["allocated_minutes"]
+            final_minutes = final_item.allocated_minutes
+            delta = final_minutes - predicted_minutes
 
-def compute_normalized_gain(pre_score,post_score):
-    if pre_score>=100:
-        return 0.0
-    return (post_score-pre_score)/(100-pre_score)
+            normalized_gain = compute_normalized_gain(
+                final_item.pre_score,
+                final_item.post_score
+            )
 
+            writer.writerow([
+                timestamp,
+                topic["topic_name"],
+                topic["difficulty"],
+                topic["past_score"],
+                topic["hours_spent"],
+                topic["revision_count"],
+                topic["days_to_exam"],
+                topic["confidence"],
+                topic["predicted_gain"],
+                predicted_minutes,
+                final_minutes,
+                delta,
+                final_item.pre_score,
+                final_item.post_score,
+                normalized_gain
+            ])
+
+    # Retraining trigger
+    if os.path.isfile(LOG_PATH):
+        df = pd.read_csv(LOG_PATH)
+        if len(df) >= 300:
+            print("⚠ Retraining threshold reached (300 logs)")
