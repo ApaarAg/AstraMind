@@ -141,6 +141,10 @@ perturbed_all_preds=np.array(perturbed_all_preds)
 perturbed_mean_preds=perturbed_all_preds.mean(axis=0)
 
 rank_corr,_=spearmanr(mean_preds,perturbed_mean_preds)
+slope=np.polyfit(Y_test,mean_preds,1)[0]
+intercept=np.polyfit(Y_test,mean_preds,1)[1]
+print("Calibrated Intercept:",intercept)
+print("Calibration Slope:",slope)
 print("Ranking Stability(Spearman):",rank_corr)
 print("R2:", r2_score(Y_test, mean_preds))
 print("RMSE:", np.sqrt(mean_squared_error(Y_test, mean_preds)))

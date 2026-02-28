@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.optimize import minimize
+
 
 def compute_priority(topic):
     urgency = 1 / (topic["days_to_exam"] + 1)
@@ -16,113 +18,57 @@ def compute_priority(topic):
 
 def generate_plan(topics, available_hours):
 
-    total_minutes = int(available_hours * 60)
+    total_hours=available_hours
+    n=len(topics)
 
-    min_minutes = 30
-    max_fraction = 0.5
-    delta_minutes = 15
+    min_hours=0.5
+    max_fraction=0.5
+    max_hours=max_fraction*total_hours
 
-    max_cap = int(max_fraction * total_minutes)
-    n_topics = len(topics)
-
-    if min_minutes * n_topics > total_minutes:
-        raise ValueError("Not enough time to satisfy minimum allocation")
-
-    # ---------------------------------
-    # Step 1 — Minimum allocation
-    # ---------------------------------
+    gains=[]
     for topic in topics:
-        topic["allocated_minutes"] = min_minutes
+        mean=topic["predicted_gain"]
+        std=topic.get("prediction_std",0)
+        risk_gain=mean/(1+std)
+        gains.append(risk_gain)
 
-    remaining_minutes = total_minutes - (min_minutes * n_topics)
+    gains=np.array(gains)
 
-    # ---------------------------------
-    # Step 2 — Greedy allocation
-    # ---------------------------------
-    while remaining_minutes >= delta_minutes:
+    def objective(h):
+        total=0
+        for i in range(n):
+            total+=gains[i]*(1-np.exp(-0.8*h[i]))
+        return -total
+    
+    constraints=[{
+        "type":"eq",
+        "fun":lambda h: np.sum(h)-total_hours
+    }]
 
-        best_topic = None
-        best_gain = -1
+    bounds=[(min_hours,max_hours) for _ in range(n)]
 
-        for topic in topics:
+    x0=np.array([total_hours/n]*n)
 
-            current_minutes = topic["allocated_minutes"]
+    result=minimize(
+        objective,
+        x0,
+        bounds=bounds,
+        constraints=constraints
+    )
 
-            # Enforce hard cap
-            if current_minutes + delta_minutes > max_cap:
-                continue
+    optimal_hours=result.x
 
-            current_hours = current_minutes / 60
+    for topic,hours in zip(topics,optimal_hours):
+        minutes=int(round(hours*60))
 
-            mean_gain = topic["predicted_gain"]
-            std_gain = topic.get("prediction_std", 0)
+        topic["allocated_minutes"]=minutes
+        topic["allocated_time"] = f"{minutes//60}h {minutes%60}m"
 
-            # Stable uncertainty adjustment
-            risk_gain = mean_gain / (1 + std_gain)
-
-            mg = marginal_gain(
-                risk_gain,
-                current_hours
-            )
-
-            if mg > best_gain:
-                best_gain = mg
-                best_topic = topic
-
-        if best_topic is None:
-            break
-
-        best_topic["allocated_minutes"] += delta_minutes
-        remaining_minutes -= delta_minutes
-
-    # ---------------------------------
-    # Step 3 — Handle leftover minutes
-    # ---------------------------------
-    leftover = remaining_minutes
-
-    if leftover > 0:
-
-        best_topic = None
-        best_gain = -1
-
-        for topic in topics:
-
-            if topic["allocated_minutes"] + leftover > max_cap:
-                continue
-
-            current_hours = topic["allocated_minutes"] / 60
-
-            mean_gain = topic["predicted_gain"]
-            std_gain = topic.get("prediction_std", 0)
-
-            risk_gain = mean_gain / (1 + std_gain)
-
-            mg = marginal_gain(
-                risk_gain,
-                current_hours
-            )
-
-            if mg > best_gain:
-                best_gain = mg
-                best_topic = topic
-
-        if best_topic is not None:
-            best_topic["allocated_minutes"] += leftover
-            remaining_minutes = 0
-
-    # ---------------------------------
-    # Step 4 — Format Output
-    # ---------------------------------
-    for topic in topics:
-        minutes = topic["allocated_minutes"]
-        topic["allocated_time"] = f"{minutes//60}h: {minutes%60}m"
-
-    return {
-        "study_plan": topics,
-        "unused_minutes": remaining_minutes
-    }
-
-
+        return {
+            "study_plan":topics,
+            "unused_minutes":0
+        }
+    
 def total_gain(predicted_gain, hours, k=0.8):
     return predicted_gain * (1 - np.exp(-k * hours))
 
