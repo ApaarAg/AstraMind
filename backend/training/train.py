@@ -92,19 +92,27 @@ y = data["improvement"]
 X_train, X_test, Y_train, Y_test = train_test_split(
     X, y, test_size=0.2, random_state=89
 )
+models=[]
+for seed in [10,20,30,40,50]:
+    model = XGBRegressor(
+        n_estimators=300,
+        max_depth=4,
+        learning_rate=0.05
+    )
 
-model = XGBRegressor(
-    n_estimators=300,
-    max_depth=4,
-    learning_rate=0.05
-)
+    model.fit(X_train, Y_train)
+    models.append(model)
 
-model.fit(X_train, Y_train)
-
-preds = model.predict(X_test)
+all_preds=[]
+for model in models:
+    preds=model.predict(X_test)
+    all_preds.append(preds)
+all_preds=np.array(all_preds)
+mean_preds=all_preds.mean(axis=0)
+std_preds = all_preds.std(axis=0)
 
 plt.figure()
-plt.scatter(Y_test,preds,alpha=0.4)
+plt.scatter(Y_test,mean_preds,alpha=0.4)
 plt.xlabel("Actual Improvement")
 plt.ylabel("Predicted Improvement")
 plt.title("Prediction vs Actual")
@@ -113,7 +121,7 @@ plt.plot([Y_test.min(),Y_test.max()],
          "r--")
 plt.show()
 
-residuals=Y_test-preds
+residuals=Y_test-mean_preds
 plt.figure()
 plt.hist(residuals,bins=40)
 plt.title("Residual Distribution")
@@ -124,13 +132,19 @@ plt.show()
 X_perturbed=X_test.copy()
 noise=np.random.normal(0,0.02,X_perturbed.shape)
 X_perturbed=X_perturbed + noise
-perturbed_preds=model.predict(X_perturbed)
+perturbed_all_preds=[]
 
-rank_corr,_=spearmanr(preds,perturbed_preds)
+for model in models:
+    preds=model.predict(X_perturbed)
+    perturbed_all_preds.append(preds)
+perturbed_all_preds=np.array(perturbed_all_preds)
+perturbed_mean_preds=perturbed_all_preds.mean(axis=0)
+
+rank_corr,_=spearmanr(mean_preds,perturbed_mean_preds)
 print("Ranking Stability(Spearman):",rank_corr)
-print("R2:", r2_score(Y_test, preds))
-print("RMSE:", np.sqrt(mean_squared_error(Y_test, preds)))
-
+print("R2:", r2_score(Y_test, mean_preds))
+print("RMSE:", np.sqrt(mean_squared_error(Y_test, mean_preds)))
+print("Average Prediction Std:", std_preds.mean())
 # -------------------------
 # 7. Save Feature Importance
 # -------------------------
@@ -138,11 +152,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-importances = model.feature_importances_
+all_importances=[]
+for model in models:
+    all_importances.append(model.feature_importances_)
+all_importances=np.array(all_importances)
+mean_importance=all_importances.mean(axis=0)
+
 
 importances_dict = {
     feature: float(importance)
-    for feature, importance in zip(FEATURES, importances)
+    for feature, importance in zip(FEATURES, mean_importance)
 }
 
 with open(os.path.join(DATA_DIR, "feature_importance.json"), "w") as f:
@@ -152,4 +171,4 @@ with open(os.path.join(DATA_DIR, "feature_importance.json"), "w") as f:
 # 8. Save Model
 # -------------------------
 os.makedirs(r"backend\app\model", exist_ok=True)
-joblib.dump(model, r"backend\app\model\mastery_model.pkl")
+joblib.dump(models, r"backend\app\model\mastery_model.pkl")

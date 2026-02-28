@@ -16,21 +16,34 @@ def load_model():
     return _model
 
 def predict_mastery(topics:list):
-    model=load_model()
+    models=load_model()
 
     df=pd.DataFrame(topics)
     feature_columns=[
         "difficulty",
         "past_score",
+        "remaining_gap",
         "hours_spent",
         "revision_count",
         "days_to_exam",
-        "confidence"
+        "confidence",
+        "predicted_minutes"
     ]
+    df["remaining_gap"]=100-df["past_score"]
+    df["predicted_minutes"]=0
     df=df[feature_columns].astype(float)
-    preds=model.predict(df)
+    
+    all_preds=[]
+    for model in models:
+        preds=model.predict(df)
+        all_preds.append(preds)
 
-    return preds
+    all_preds=pd.DataFrame(all_preds)
+
+    mean_preds=all_preds.mean(axis=0).values
+    std_preds=all_preds.std(axis=0).values
+    
+    return mean_preds,std_preds
 
 def classify_mastery(prob):
     if prob <0.4:
@@ -41,14 +54,17 @@ def classify_mastery(prob):
         return "high"
     
 def predict_with_classification(topics:list):
-    probs=predict_mastery(topics)
+    mean_preds,std_preds=predict_mastery(topics)
 
     results=[]
+    
 
-    for topic,prob in zip(topics,probs):
+    for topic,mean,std in zip(topics,mean_preds,std_preds):
         result = topic.copy()
 
-        result["predicted_gain"]=float(prob)
+        result["predicted_gain"]=float(mean)
+        result["prediction_std"]=float(std)
+
         results.append(result)
 
     return results

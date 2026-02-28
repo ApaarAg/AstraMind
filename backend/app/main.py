@@ -21,6 +21,9 @@ def create_plan(request:StudyRequest):
     global last_generated_plan
     last_generated_plan=plan
 
+    print("Predictions:", predictions)
+    print("Number of topics:", len(predictions))
+
     return {"study_plan":plan}
 
 
