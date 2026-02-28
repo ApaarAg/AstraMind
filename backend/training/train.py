@@ -5,7 +5,7 @@ from scipy.stats import spearmanr
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 from xgboost import XGBRegressor
-import joblib, os, json
+import joblib, os, json,datetime
 
 np.random.seed(67)
 
@@ -113,6 +113,18 @@ for model in models:
 all_preds=np.array(all_preds)
 mean_preds=all_preds.mean(axis=0)
 std_preds = all_preds.std(axis=0)
+
+experiment={
+    "timestamp":str(datetime.datetime.now()),
+    "r2":float(r2_score(Y_test,mean_preds)),
+    "rmse":float(np.sqrt(mean_squared_error(Y_test,mean_preds))),
+    "avg_prediction_std":float(np.mean(std_preds))
+
+}
+
+with open(r"backend\experiments\log.json","a") as f:
+    f.write(json.dumps(experiment)+"\n")
+
 
 plt.figure()
 plt.scatter(Y_test,mean_preds,alpha=0.4)
