@@ -8,11 +8,11 @@ import {
 // ─── DATA & MATH ────────────────────────────────────────────────────────────
 
 const DEFAULT_TOPICS = [
-  { id: 1, name: "Machine Learning", difficulty: 0.85, urgency: 0.90, baseGain: 0.78, color: "#a78bfa", pastScore: 62, hoursSpent: 8,  revisionCount: 2, daysToExam: 7,  confidence: 0.40 },
-  { id: 2, name: "Linear Algebra",   difficulty: 0.70, urgency: 0.75, baseGain: 0.65, color: "#22d3ee", pastScore: 74, hoursSpent: 12, revisionCount: 3, daysToExam: 14, confidence: 0.55 },
-  { id: 3, name: "Statistics",       difficulty: 0.60, urgency: 0.80, baseGain: 0.72, color: "#34d399", pastScore: 80, hoursSpent: 10, revisionCount: 4, daysToExam: 10, confidence: 0.65 },
-  { id: 4, name: "Deep Learning",    difficulty: 0.90, urgency: 0.70, baseGain: 0.85, color: "#f472b6", pastScore: 55, hoursSpent: 5,  revisionCount: 1, daysToExam: 21, confidence: 0.30 },
-  { id: 5, name: "Algorithms",       difficulty: 0.75, urgency: 0.65, baseGain: 0.68, color: "#fb923c", pastScore: 70, hoursSpent: 9,  revisionCount: 3, daysToExam: 18, confidence: 0.50 },
+  { id: 1, name: "Machine Learning", difficulty: 0.85, urgency: 0.90, baseGain: 0.78, color: "#a78bfa", pastScore: 62, hoursSpent: 8, revisionCount: 2, daysToExam: 7, confidence: 0.40 },
+  { id: 2, name: "Linear Algebra", difficulty: 0.70, urgency: 0.75, baseGain: 0.65, color: "#22d3ee", pastScore: 74, hoursSpent: 12, revisionCount: 3, daysToExam: 14, confidence: 0.55 },
+  { id: 3, name: "Statistics", difficulty: 0.60, urgency: 0.80, baseGain: 0.72, color: "#34d399", pastScore: 80, hoursSpent: 10, revisionCount: 4, daysToExam: 10, confidence: 0.65 },
+  { id: 4, name: "Deep Learning", difficulty: 0.90, urgency: 0.70, baseGain: 0.85, color: "#f472b6", pastScore: 55, hoursSpent: 5, revisionCount: 1, daysToExam: 21, confidence: 0.30 },
+  { id: 5, name: "Algorithms", difficulty: 0.75, urgency: 0.65, baseGain: 0.68, color: "#fb923c", pastScore: 70, hoursSpent: 9, revisionCount: 3, daysToExam: 18, confidence: 0.50 },
 ];
 
 // ─── FEATURE MAPPING ─────────────────────────────────────────────────────────
@@ -21,14 +21,16 @@ function mapFormToTopic(fields, id, color) {
   const { name, difficulty, pastScore, hoursSpent, revisionCount, daysToExam, confidence } = fields;
   // urgency: peaks when exam is imminent, score is low, and confidence is low
   const examUrgency = Math.max(0, 1 - (daysToExam - 1) / 29);
-  const scoreGap    = Math.max(0, (100 - pastScore) / 100);
-  const urgency     = Math.min(1, examUrgency * 0.5 + scoreGap * 0.3 + (1 - confidence) * 0.2);
+  const scoreGap = Math.max(0, (100 - pastScore) / 100);
+  const urgency = Math.min(1, examUrgency * 0.5 + scoreGap * 0.3 + (1 - confidence) * 0.2);
   // baseGain: headroom left to improve — low score + low study hours = high potential
   const studyMaturity = Math.min(1, hoursSpent / 20);
   const revisionBoost = Math.min(0.1, revisionCount * 0.02);
-  const baseGain    = Math.min(0.95, scoreGap * 0.6 + (1 - studyMaturity) * 0.3 + revisionBoost + 0.1);
-  return { id, name: name.trim(), difficulty, urgency, baseGain, color,
-           pastScore, hoursSpent, revisionCount, daysToExam, confidence };
+  const baseGain = Math.min(0.95, scoreGap * 0.6 + (1 - studyMaturity) * 0.3 + revisionBoost + 0.1);
+  return {
+    id, name: name.trim(), difficulty, urgency, baseGain, color,
+    pastScore, hoursSpent, revisionCount, daysToExam, confidence
+  };
 }
 
 function saturation(h, alpha = 1.8, beta = 0.6) {
@@ -191,7 +193,7 @@ function AllocationBar({ topic, maxHours, index }) {
       initial={{ opacity: 0, x: -30 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.07, type: "spring", stiffness: 120 }}
-      className="relative group"
+      className={`relative group ${hovered ? "z-50" : "z-0"}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -199,7 +201,7 @@ function AllocationBar({ topic, maxHours, index }) {
         <span className="text-sm font-medium text-white/80 tracking-wide">{topic.name}</span>
         <div className="flex items-center gap-3 text-xs">
           <span className="text-white/50">{topic.hours.toFixed(1)}h</span>
-          <span style={{ color: topic.color }} className="font-semibold">+{(topic.gain * 100).toFixed(0)}%</span>
+          <span style={{ color: topic.color }} className="font-semibold">+{Math.round(topic.gain * 100)}%</span>
         </div>
       </div>
 
@@ -225,7 +227,7 @@ function AllocationBar({ topic, maxHours, index }) {
           style={{ background: `${topic.color}44`, border: `1px dashed ${topic.color}88` }}
         />
         <div className="absolute inset-0 flex items-center px-3">
-          <span className="text-[11px] text-white/60 font-mono">±{(topic.uncertainty * 100).toFixed(1)}%</span>
+          {pct > 15 && <span className="text-[11px] text-white/60 font-mono">±{Math.round(topic.uncertainty * 100)}%</span>}
         </div>
       </div>
 
@@ -417,8 +419,8 @@ function AddTopicForm({ onAdd, onCancel }) {
 
   const validate = () => {
     const errs = {};
-    if (!form.name.trim())       errs.name = "Topic name is required.";
-    if (form.daysToExam < 1)     errs.daysToExam = "Must be at least 1 day.";
+    if (!form.name.trim()) errs.name = "Topic name is required.";
+    if (form.daysToExam < 1) errs.daysToExam = "Must be at least 1 day.";
     if (form.pastScore < 0 || form.pastScore > 100) errs.pastScore = "Enter a value 0–100.";
     return errs;
   };
@@ -564,14 +566,15 @@ function TopicPill({ topic, selected, onClick, onRemove }) {
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 
-const TOPIC_COLORS = ["#a78bfa","#22d3ee","#34d399","#f472b6","#fb923c","#60a5fa","#facc15","#e879f9"];
+const TOPIC_COLORS = ["#a78bfa", "#22d3ee", "#34d399", "#f472b6", "#fb923c", "#60a5fa", "#facc15", "#e879f9"];
 let nextId = 10;
 
 async function fetchPlan(topics, availableHours) {
+
   const payload = {
-    study_plan: topics.map(t => ({
+    topics: topics.map(t => ({
       topic_name: t.name,
-      difficulty: Math.round(t.difficulty * 5),      // 0–1 → 1–5
+      difficulty: Math.round(t.difficulty * 5),
       past_score: t.pastScore,
       hours_spent: t.hoursSpent,
       revision_count: t.revisionCount,
@@ -580,6 +583,8 @@ async function fetchPlan(topics, availableHours) {
     })),
     available_hours: availableHours
   };
+
+  console.log("🚀 Sending payload:", payload);
 
   const response = await fetch("http://localhost:8000/plan", {
     method: "POST",
@@ -591,15 +596,19 @@ async function fetchPlan(topics, availableHours) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Backend error: ${errorText}`);
+    console.error("❌ Backend error:", errorText);
+    throw new Error("Backend plan generation failed");
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log("✅ Backend response:", result);
+
+  return result;
 }
 
 export default function App() {
-  const [allocation,setAllocation]=useState([]);
-  const [loading,setLoading]=useState(false);
+  const [allocation, setAllocation] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [budget, setBudget] = useState(8);
   const [topics, setTopics] = useState(DEFAULT_TOPICS);
   const [selected, setSelected] = useState(1);
@@ -625,52 +634,64 @@ export default function App() {
   };
 
   const removeTopic = id => setTopics(prev => prev.filter(t => t.id !== id));
-  
+
   useEffect(() => {
-  if (!topics.length) return;
+    console.log("🔥 useEffect triggered", topics, budget);
+    if (!topics.length) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function runBackend() {
-    try {
-      setLoading(true);
+    async function runBackend() {
+      try {
+        setLoading(true);
 
-      const result = await fetchPlan(topics, budget);
+        const result = await fetchPlan(topics, budget);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      const formatted = result.study_plan.map((t, index) => ({
-        id: index + 1,
-        name: t.topic_name,
-        difficulty: t.difficulty / 5,
-        color: topics.find(x => x.name === t.topic_name)?.color || "#a78bfa",
+        // Backend predicted_gain is a raw model score (0–10 range).
+        // Normalize it to 0–1 for display (dividing by 10).
+        const maxGain = Math.max(...result.study_plan.map(t => t.predicted_gain), 1);
+        const formatted = result.study_plan.map((t, index) => {
+          const srcTopic = topics.find(x => x.name === t.topic_name);
+          return {
+            id: srcTopic?.id ?? index + 1,
+            name: t.topic_name,
+            difficulty: t.difficulty / 5,
+            color: srcTopic?.color || "#a78bfa",
+            hours: t.allocated_minutes / 60,
+            // Normalize gain to 0–1 range relative to maximum predicted gain
+            gain: t.predicted_gain / Math.max(maxGain, 10),
+            uncertainty: Math.min(t.prediction_std / Math.max(maxGain, 10), 0.5),
+            urgency: srcTopic?.urgency || 0.5,
+            baseGain: srcTopic?.baseGain || 0.5
+          };
+        });
 
-        hours: t.allocated_minutes / 60,
-        gain: t.predicted_gain / 100,
-        uncertainty: t.prediction_std / 100
-      }));
+        setAllocation(formatted);
 
-      setAllocation(formatted);
-
-    } catch (err) {
-      console.error(err);
-    } finally {
-      if (!cancelled) setLoading(false);
+      } catch (err) {
+        console.error("Backend fetch failed, falling back to local optimizer:", err);
+        if (!cancelled) {
+          setAllocation(optimizeAllocation(topics, budget));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }
 
-  runBackend();
+    runBackend();
 
-  return () => {
-    cancelled = true;
-  };
+    return () => {
+      cancelled = true;
+    };
 
-}, [topics, budget]);
+  }, [topics, budget]);
 
   return (
     <div className="min-h-screen text-white relative overflow-x-hidden"
       style={{ background: "radial-gradient(ellipse at 20% 50%, #0f0a2e 0%, #050510 50%, #030308 100%)", fontFamily: "'DM Sans', 'Sora', sans-serif" }}>
-      
+
       {/* Google Fonts */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -740,11 +761,11 @@ export default function App() {
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               {[
-                ["Topics Active",   topics.length,                                                                                                                                           "#a78bfa"],
-                ["Avg Difficulty",  topics.length > 0 ? (topics.reduce((s,t) => s + t.difficulty,    0) / topics.length).toFixed(2) : "—", "#fb923c"],
-                ["Avg Urgency",     topics.length > 0 ? (topics.reduce((s,t) => s + t.urgency,       0) / topics.length).toFixed(2) : "—", "#f472b6"],
-                ["Avg Past Score",  topics.length > 0 ? `${(topics.reduce((s,t) => s + (t.pastScore ?? 70), 0) / topics.length).toFixed(0)}%` : "—", "#34d399"],
-              ].map(([k,v,c]) => (
+                ["Topics Active", topics.length, "#a78bfa"],
+                ["Avg Difficulty", topics.length > 0 ? (topics.reduce((s, t) => s + t.difficulty, 0) / topics.length).toFixed(2) : "—", "#fb923c"],
+                ["Avg Urgency", topics.length > 0 ? (topics.reduce((s, t) => s + t.urgency, 0) / topics.length).toFixed(2) : "—", "#f472b6"],
+                ["Avg Past Score", topics.length > 0 ? `${(topics.reduce((s, t) => s + (t.pastScore ?? 70), 0) / topics.length).toFixed(0)}%` : "—", "#34d399"],
+              ].map(([k, v, c]) => (
                 <div key={k} className="bg-white/3 border border-white/5 rounded-xl p-3">
                   <div className="text-[10px] text-white/40 mb-1">{k}</div>
                   <div className="font-mono font-semibold text-lg" style={{ color: c }}>{v}</div>
@@ -785,9 +806,9 @@ export default function App() {
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Total Expected Gain", value: topics.length > 0 ? `${(totalGain / topics.length * 100).toFixed(1)}%` : "—", color: "#34d399" },
+                { label: "Total Expected Gain", value: topics.length > 0 ? `${(totalGain * 100).toFixed(1)}%` : "—", color: "#34d399" },
                 { label: "Avg Hours/Topic", value: topics.length > 0 ? `${(budget / topics.length).toFixed(1)}h` : "—", color: "#67e8f9" },
-                { label: "Efficiency Score", value: topics.length > 0 ? `${Math.min(99, (totalGain / topics.length / budget * 200)).toFixed(0)}` : "—", color: "#a78bfa" },
+                { label: "Efficiency Score", value: topics.length > 0 ? `${Math.min(99, (totalGain / budget * 200)).toFixed(0)}` : "—", color: "#a78bfa" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="text-center bg-white/3 border border-white/5 rounded-xl p-3">
                   <motion.div key={value} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="font-mono font-bold text-xl" style={{ color }}>
@@ -801,7 +822,7 @@ export default function App() {
         </div>
 
         {/* ── ALLOCATION DASHBOARD ── */}
-        <GlassCard className="p-6 space-y-5">
+        <GlassCard className="p-6 space-y-5 z-20">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-display text-lg font-semibold text-white/90">Allocation Dashboard</h2>
             <div className="text-xs font-mono text-white/30">Stochastic Greedy · Marginal Utility</div>
