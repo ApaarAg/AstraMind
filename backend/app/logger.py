@@ -23,7 +23,7 @@ def log_session(predicted_plan, final_plan):
 
     # Map topic_name -> full final object
     final_lookup = {
-        item.topic_name: item
+        item["topic_name"]: item
         for item in final_plan
     }
 

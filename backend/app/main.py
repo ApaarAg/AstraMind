@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import StudyRequest, FinalizeRequest
 from app.model_loader import predict_with_classification
@@ -43,9 +43,19 @@ def create_plan(request: StudyRequest):
 def finalize_plan(request: FinalizeRequest):
     global last_generated_plan
 
+    # temporry change to find the error
+    print("LAST GENERATED PLAN:", last_generated_plan)
+    print("FINAL PLAN RECEIVED:", request.final_plan)
+
+    if last_generated_plan is None:
+        raise HTTPException(status_code=400,detail="No plan generated yet`")
+
+    predicted_list=last_generated_plan.get("study_plan",[])
+    final_list= [item.dict() for item in request.final_plan]
+
     log_session(
-        predicted_plan=last_generated_plan,
-        final_plan=request.final_plan
+        predicted_plan=predicted_list,
+        final_plan=final_list
     )
 
     return {"status": "plan saved"}
