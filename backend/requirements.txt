@@ -6,3 +6,4 @@ scipy
 joblib
 scikit-learn
 pydantic
+xgboost
