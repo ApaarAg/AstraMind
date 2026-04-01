@@ -2,7 +2,7 @@
 // All requests go to the FastAPI backend.
 // Frontend uses camelCase/0-1 floats; backend expects snake_case/integer scales.
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://astramind-0zpf.onrender.com";
 
 // ─── Payload transformer: converts frontend topic shape → backend schema ─────
 function toBackendTopic(t) {
